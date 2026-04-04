@@ -11,10 +11,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = 8000;
+const PORT = process.env.PORT || 8000;
 const ROOT_DIR = path.join(__dirname, '..', '..');
-const SETTINGS_FILE = path.join(ROOT_DIR, '.env_settings.json');
-const TMP_DIR = path.join(ROOT_DIR, '.tmp');
+const SETTINGS_FILE = process.env.VERCEL ? path.join('/tmp', '.env_settings.json') : path.join(ROOT_DIR, '.env_settings.json');
+const TMP_DIR = process.env.VERCEL ? '/tmp' : path.join(ROOT_DIR, '.tmp');
 
 if (!fs.existsSync(TMP_DIR)) {
     fs.mkdirSync(TMP_DIR, { recursive: true });
@@ -88,13 +88,13 @@ app.post('/api/generate', async (req: Request, res: Response) => {
         const pdfFilename = `testplan-${jira_id}.pdf`;
 
         await generateDocx(llmResponse, path.join(TMP_DIR, docxFilename));
-        await generatePdf(llmResponse, path.join(TMP_DIR, pdfFilename));
+        const pdfSuccess = await generatePdf(llmResponse, path.join(TMP_DIR, pdfFilename));
 
         res.json({
             status: "success",
-            message: "Generation completed successfully.",
+            message: pdfSuccess ? "Generation completed successfully." : "Generation completed (PDF unavailable on Vercel).",
             download_url: `/api/download/${docxFilename}`,
-            download_url_pdf: `/api/download/${pdfFilename}`,
+            download_url_pdf: pdfSuccess ? `/api/download/${pdfFilename}` : null,
             preview_text: llmResponse
         });
     } catch (e: any) {
@@ -125,6 +125,10 @@ if (fs.existsSync(FRONTEND_DIR)) {
     app.use(express.static(FRONTEND_DIR));
 }
 
-app.listen(PORT, () => {
-    console.log(`Express TS Backend running on http://127.0.0.1:${PORT}`);
-});
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`Express TS Backend running on http://127.0.0.1:${PORT}`);
+    });
+}
+
+export default app;
