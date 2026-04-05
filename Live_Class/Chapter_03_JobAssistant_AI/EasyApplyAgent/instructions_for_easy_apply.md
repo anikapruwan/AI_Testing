@@ -1,0 +1,1 @@
+I want you to basically open LinkedIn. Okay? In LinkedIn, you first of all have to log in with username and password. After logging in, you need to navigate to the jobs page. In the jobs page, one by one, you will see that there are jobs which are available. I want you to take my resume and start applying for the Easy Apply. 
