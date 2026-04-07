@@ -1,0 +1,145 @@
+{
+  "name": "QA_Testplan",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2278d33d-415e-4a3e-abbc-f613f2e5cf1f",
+      "name": "When chat message received",
+      "webhookId": "765fbeec-aba2-4074-9136-2e7c692211c4"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "R - Role  \nYou are a QA Manager with 15+ years of experience in software testing, test strategy, and quality assurance across enterprise-level applications. You have deep expertise in manual testing, automation, risk assessment, and stakeholder communication.\n\nI - Instructions  \nCreate a comprehensive and professional Test Plan document for the application described below. Follow industry best practices (ISTQB standards) and ensure clarity, completeness, and structure.\n\nAdditionally:\n- You will be provided with a JIRA ID.\n- Use this JIRA ID as a reference throughout the document (e.g., Test Plan Identifier, traceability, linking test scope, defects, and reporting).\n- Ensure traceability between requirements and testing activities using the provided JIRA ID.\n\nInclude the following sections in detail:\n\n1. Test Plan Identifier (include JIRA ID)  \n2. Objective  \n3. Scope (In-Scope and Out-of-Scope)  \n4. Test Strategy  \n   - Levels of Testing (Unit, Integration, System, UAT)  \n   - Types of Testing (Functional, Regression, Performance, Security, Usability, etc.)  \n   - Automation Strategy (tools, framework, approach)  \n5. Test Environment  \n6. Test Data Requirements  \n7. Entry and Exit Criteria  \n8. Test Deliverables  \n9. Test Schedule & Milestones  \n10. Resource Planning (roles and responsibilities)  \n11. Risk Analysis and Mitigation Plan  \n12. Defect Management Process (linked with JIRA workflow)  \n13. Test Metrics and Reporting (include JIRA dashboards/reports)  \n14. Traceability Matrix (map requirements with JIRA ID)  \n15. Assumptions and Dependencies  \n16. Approval and Sign-off  \n\nAdditional Guidelines:\n- Use clear headings and structured formatting\n- Provide realistic examples wherever possible\n- Avoid assumptions if data is missing; instead mention \"Not Provided\"\n- Keep it suitable for enterprise-level documentation\n- Output should be in Markdown format\n\nC - Context  \nApplication Name: <Provide Application Name>  \nApplication Type: <Web / Mobile / API / Desktop>  \nTech Stack: <Provide details if available>  \nTarget Users: <End Users / Admin / Enterprise Clients>  \nKey Features: <List major features>  \nJIRA ID: <Provide JIRA Ticket ID>  \n\nE - Expected Output  \nA well-structured, detailed Test Plan document in Markdown format that can be directly used or shared with stakeholders, with proper integration and traceability using the provided JIRA ID."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9eff9e85-0ee3-4aaf-8f31-00d1cd04b2a7",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        64,
+        208
+      ],
+      "id": "edd280bb-66ab-48f3-bcb2-6e63394d9409",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "8Gea2lmPdZw4j2V1",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        208
+      ],
+      "id": "6098eeff-b642-4fe4-be46-05fabb908fdc",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "issueKey": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Issue_Key', ``, 'string') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.jiraTool",
+      "typeVersion": 1,
+      "position": [
+        368,
+        208
+      ],
+      "id": "70ed22b2-5b54-498a-8989-7efa6c471f9f",
+      "name": "Get an issue in Jira Software",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "pYfrB7DGtjYqYsn6",
+          "name": "Jira SW Cloud account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get an issue in Jira Software": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0875af89-5834-4b0e-9774-a0fa2c17ce20",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a8e14a9e2edd7cc67f253b41ecd8a3fb3db65da029e18989ba7edd7bb548b493"
+  },
+  "id": "zaAN970BtT8HJtai",
+  "tags": []
+}

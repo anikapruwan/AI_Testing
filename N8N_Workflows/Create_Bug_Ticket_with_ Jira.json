@@ -1,0 +1,160 @@
+{
+  "name": "Create a Bug Ticket in Jira",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -240,
+        -96
+      ],
+      "id": "d55b3c19-595b-4e8d-ae8c-4af9b5e2278d",
+      "name": "When chat message received",
+      "webhookId": "1cd1da36-de60-472f-bc15-ccb4cd14fd63"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "ROLE:\nYou are a Senior QA Engineer with 10+ years of experience in writing clear, concise, and high-quality bug - task reports in JIRA.\n\nINSTRUCTIONS:\nGenerate a detailed bug ticket using the information provided. Follow industry-standard QA practices and ensure the bug is easy to understand, reproducible, and actionable for developers. And Use Jira tool for reporting  the task.\n\nBUG DETAILS INPUT:\n- Application Name: <App Name>\n- Environment: <Production / Staging / QA>\n- Module: <Module Name>\n- Build Version: <Version>\n- Device/Browser: <Device/Browser details>\n- Priority: <Low/Medium/High/Critical>\n- Severity: <Minor/Major/Critical/Blocker>\n- Issue Summary: <Short title of the bug>\n- Pre-conditions: <Any setup required>\n- Steps to Reproduce: <Step-by-step actions>\n- Test Data: <If any>\n- Expected Result: <What should happen>\n- Actual Result: <What actually happens>\n- Attachments: <Screenshots/Logs if any>\n\nOUTPUT FORMAT:\nGenerate the bug ticket in the following structured format:\n\n1. Summary:\n<Concise bug title>\n\n2. Description:\n<Detailed explanation of the issue>\n\n3. Environment:\n- Application:\n- Module:\n- Environment:\n- Build Version:\n- Device/Browser:\n\n4. Pre-conditions:\n- <List>\n\n5. Steps to Reproduce:\n1.\n2.\n3.\n\n6. Expected Result:\n<Expected behavior>\n\n7. Actual Result:\n<Actual behavior>\n\n8. Severity:\n<Severity>\n\n9. Priority:\n<Priority>\n\n10. Reproducibility:\n<Always / Sometimes / Rare>\n\n11. Attachments:\n<Mention if available>\n\nIMPORTANT RULES:\n- Do NOT assume missing information.\n- If any detail is missing, explicitly mention \"Not Provided\".\n- Keep language clear, professional, and developer-friendly.\n- Avoid vague statements like \"not working\".\n- Use precise and measurable descriptions."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -32,
+        -96
+      ],
+      "id": "cdf38406-856e-4854-929b-401a69a07494",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        112
+      ],
+      "id": "f4e53bd1-415d-49ad-aedb-63868b413db8",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "8Gea2lmPdZw4j2V1",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -32,
+        112
+      ],
+      "id": "b5962b5a-4d60-4180-9b44-ae7e101d58fe",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "project": {
+          "__rl": true,
+          "value": "10000",
+          "mode": "list",
+          "cachedResultName": "My Team"
+        },
+        "issueType": {
+          "__rl": true,
+          "value": "10003",
+          "mode": "list",
+          "cachedResultName": "Task"
+        },
+        "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
+        "additionalFields": {
+          "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.jiraTool",
+      "typeVersion": 1,
+      "position": [
+        256,
+        144
+      ],
+      "id": "67f4f2d2-237b-4e87-a272-0b3adb6742ff",
+      "name": "Create an issue in Jira Software",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "pYfrB7DGtjYqYsn6",
+          "name": "Jira SW Cloud account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an issue in Jira Software": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f301722f-f693-4169-a185-81869a6ac04f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a8e14a9e2edd7cc67f253b41ecd8a3fb3db65da029e18989ba7edd7bb548b493"
+  },
+  "id": "7KxHgaCA6B4JP9ky",
+  "tags": []
+}
