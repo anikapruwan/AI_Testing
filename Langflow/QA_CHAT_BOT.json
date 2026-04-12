@@ -90,7 +90,7 @@
             ],
             "frozen": false,
             "icon": "Groq",
-            "last_updated": "2026-04-12T18:46:45.078Z",
+            "last_updated": "2026-04-12T18:54:18.487Z",
             "legacy": false,
             "lf_version": "1.8.4",
             "metadata": {
@@ -174,7 +174,7 @@
                 "dynamic": false,
                 "info": "API key for the Groq API.",
                 "input_types": [],
-                "load_from_db": false,
+                "load_from_db": true,
                 "name": "api_key",
                 "override_skip": false,
                 "password": true,
@@ -185,7 +185,7 @@
                 "title_case": false,
                 "track_in_telemetry": false,
                 "type": "str",
-                "value": "gsk_YOUR_API_KEY_HERE"
+                "value": "Groq Key"
               },
               "base_url": {
                 "_input_type": "MessageTextInput",
@@ -1041,9 +1041,9 @@
       }
     ],
     "viewport": {
-      "x": 159.29895391742252,
-      "y": 252.85491695278398,
-      "zoom": 0.6585206768838475
+      "x": -36.06555595741554,
+      "y": 208.57382772838054,
+      "zoom": 0.7996322505018149
     }
   },
   "description": "Engineered for Excellence, Built for Business.",
@@ -1051,7 +1051,7 @@
   "id": "ea044198-5293-4986-be9b-6817d24c63bd",
   "is_component": false,
   "last_tested_version": "1.8.4",
-  "locked": true,
+  "locked": false,
   "name": "QA_CHAT_BOT",
   "tags": []
 }
