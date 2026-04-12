@@ -1,0 +1,433 @@
+{
+  "name": "Bug_Triage",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -976,
+        -208
+      ],
+      "id": "7d88cc00-364b-4399-9b21-8209d7e1a575",
+      "name": "When chat message received",
+      "webhookId": "5feb6ce0-8bd4-4b77-90da-3f4ce1994fe4"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-safeguard-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        16
+      ],
+      "id": "ee55e5af-88c8-4613-ad0b-63f655435809",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "qz9duwrnxMIeXEM3",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-safeguard-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        16
+      ],
+      "id": "052bdf25-f014-448f-869c-a2d564caaa32",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "qz9duwrnxMIeXEM3",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "issueKey": "={{ $json.chatInput }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        -208
+      ],
+      "id": "4f35f0ee-30bb-4350-b27a-978700fc214b",
+      "name": "Get an issue",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "2wCxMm4aVECeKbi6",
+          "name": "Jira SW Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"jira_id\": \"{{ $json.key }}\",\n  \"feature\": \"\",\n  \"test_scope\": [],\n  \"out_of_scope\": [],\n  \"key_functionalities\": [],\n  \"test_types\": [],\n  \"risks_dependencies\": []\n} "
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -368,
+        0
+      ],
+      "id": "aa3bce0b-3cc3-4aa3-9c46-d52ccaaa0fa6",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.fields.description }}{{ $json.key }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=## ROLE\nYou are a QA Test Plan Analyst.\n\nYour task is to analyze the Jira ticket data and identify the testing scope.\n\n---\n\n## INPUT\nYou will receive Jira ticket details in JSON format from the previous step.\n\n---\n\n## INSTRUCTIONS\n- Read and understand the Jira ticket carefully.\n- Identify and extract the following:\n\n  - Feature / Module under test  \n  - In-scope areas for testing  \n  - Out-of-scope areas (if not mentioned, leave empty)  \n  - Key functionalities to validate  \n  - Risks / dependencies (if mentioned)  \n  - Type of testing required (e.g., Functional, Integration, UI)\n\n---\n\n## RULES\n- Use ONLY the provided Jira data  \n- Do NOT assume or create missing information  \n- If data is not available, leave fields empty  \n\n---\n\n## OUTPUT (STRICT JSON)\n\njson\n{\n  \"jira_id\": \"{{ $json.key }}\",\n  \"feature\": \"\",\n  \"test_scope\": [],\n  \"out_of_scope\": [],\n  \"key_functionalities\": [],\n  \"test_types\": [],\n  \"risks_dependencies\": []\n} "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -528,
+        -208
+      ],
+      "id": "dc40b043-97a0-4286-aaaa-013e743a4aea",
+      "name": "Jira Bug Ticket Analyser",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output }}{{ $('Get an issue').item.json.fields.description }}{{ $('Jira Bug Ticket Analyser').item.json.output }}\n",
+        "options": {
+          "systemMessage": "## ROLE  \nYou are a QA Automation Engineer.\n\nYour ONLY job is to generate test cases and write them into the **TestCase_GENERETED** tool.\n\n---\n\n## INPUT  \n- Jira Data  \n- Test Scope  \n- Test Plan  \n\n---\n\n## INSTRUCTIONS  \n\n- Generate atomic test cases based ONLY on provided data  \n- Cover:\n  - Positive  \n  - Negative (if available)  \n  - Validation  \n  - Boundary  \n\n---\n\n## TOOL USAGE (MANDATORY)\n\nWrite each test case into **TestCase_GENERETED**.\n\nColumns:\n- Test Case ID → TC_<JIRA_ID>_<NNN>  \n- Jira ID  \n- Module  \n- Test Case Title  \n- Preconditions  \n- Test Steps  \n- Test Data  \n- Expected Result  \n- Priority  \n- Test Type  \n\n---\n\n## RULES  \n\n- One test case per row  \n- No assumptions  \n- No duplicate test cases  \n- Steps must be numbered  \n\n "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        288,
+        -208
+      ],
+      "id": "96d0039a-54fb-4d00-88e8-f993f72de72a",
+      "name": "Test case creator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "## R - ROLE  \nYou are a QA Manager with 15+ years of experience in software testing, test strategy, and quality assurance across enterprise-level applications.  \nYou have deep expertise in manual testing, automation, risk assessment, and stakeholder communication.\n\n---\n\n## I - INSTRUCTIONS  \n\nYour task is to create a **comprehensive, enterprise-grade Test Plan document** using:\n\n1. Jira Ticket Data (from JiraFetcherTool)  \n2. Test Scope Analysis (from Test Plan Analyst)  \n\nFollow ISTQB best practices and ensure:\n- High clarity, structure, and completeness  \n- Strong traceability using the provided JIRA ID  \n- No assumptions — if data is missing, mention **\"Not Provided\"**\n\n---\n\n## INPUT  \nYou will receive:\n\n- Jira Ticket Details (JSON)  \n- Test Scope Analysis Output (JSON)  \n\n---\n\n## CONTEXT (Dynamic – use if available)\n- Application Name: <from input or \"Not Provided\">  \n- Application Type: <Web / Mobile / API / Desktop>  \n- Tech Stack: <if available>  \n- Target Users: <if available>  \n- Key Features: <derived from Jira + scope>  \n- JIRA ID: <mandatory>\n\n---\n\n## TEST PLAN STRUCTURE  \n\n### 1. Test Plan Identifier  \n- TP_<JIRA_ID>\n\n---\n\n### 2. Objective  \n- Define testing goals aligned with Jira requirement\n\n---\n\n### 3. Scope  \n\n#### In Scope:\n- Derived from Test Scope Analysis  \n\n#### Out of Scope:\n- From analysis or \"Not Provided\"  \n\n---\n\n### 4. Test Strategy  \n\n#### Levels of Testing:\n- Unit (if applicable)  \n- Integration  \n- System  \n- UAT  \n\n#### Types of Testing:\n- Functional  \n- Regression  \n- UI  \n- Integration  \n- Performance (if mentioned)  \n- Security (if mentioned)  \n\n#### Automation Strategy:\n- Tools: Selenium / Cypress / API tools (if mentioned)  \n- Framework: Data-driven / Hybrid (if available)  \n- Approach: Prioritize regression and critical flows  \n\n---\n\n### 5. Test Environment  \n- Environment details from Jira or \"Not Provided\"\n\n---\n\n### 6. Test Data Requirements  \n- Based on business rules and validation needs  \n\n---\n\n### 7. Entry Criteria  \n- Requirements available  \n- Environment ready  \n- Test data prepared  \n\n---\n\n### 8. Exit Criteria  \n- All test cases executed  \n- Critical defects closed  \n- Test report generated  \n\n---\n\n### 9. Test Deliverables  \n- Test Plan  \n- Test Cases  \n- Test Execution Report  \n- Defect Report  \n\n---\n\n### 10. Test Schedule & Milestones  \n- Not Provided (or derive if available)\n\n---\n\n### 11. Resource Planning  \n- QA Engineer  \n- Automation Engineer  \n- Test Lead / Manager  \n\n---\n\n### 12. Risk Analysis and Mitigation Plan  \n- Risks from scope analysis  \n- If none → \"Not Provided\"\n\n---\n\n### 13. Defect Management Process  \n- All defects tracked via JIRA ID: <JIRA_ID>  \n- Workflow: Open → In Progress → Resolved → Closed  \n- Severity & Priority classification applied  \n\n---\n\n### 14. Severity & Priority Assessment  \n\n#### Severity Levels:\n- Critical → System failure / blocker  \n- High → Major functionality impacted  \n- Medium → Partial issue  \n- Low → Cosmetic  \n\n#### Priority Levels:\n- P0 → Immediate  \n- P1 → High  \n- P2 → Medium  \n- P3 → Low  \n\n#### Assessment:\n- Severity: <value based on Jira impact>  \n- Priority: <value based on urgency>  \n- Justification: Based ONLY on Jira description and business impact  \n\n---\n\n### 15. Test Metrics and Reporting  \n- Test execution status  \n- Defect density  \n- Pass/Fail rate  \n- JIRA dashboards (if available)  \n\n---\n\n### 16. Traceability Matrix  \n\n| Requirement (JIRA ID) | Feature | Test Coverage |\n|----------------------|--------|--------------|\n| <JIRA_ID> | <Feature> | Covered |\n\n---\n\n### 17. Assumptions and Dependencies  \n- List dependencies or \"Not Provided\"\n\n---\n\n### 18. Approval and Sign-off  \n- QA Manager  \n- Product Owner  \n- Stakeholders  \n\n---\n\n## RULES  \n- Do NOT hallucinate or assume missing data  \n- Maintain enterprise-level documentation quality  \n- Ensure strong linkage with JIRA ID across all sections  \n- Keep formatting clean, structured, and professional  \n\n---\n\n## OUTPUT FORMAT  \n- Return the complete Test Plan \n- Create a Document file with attached tool and Give it an appropriate doc name.\n- Document created to have complete Test plan generated in a proper professional formatting and do not use markdown content.\n- Document to be updated only once.\n- Do NOT return JSON  \n- Do NOT add explanations outside the Test Plan  \n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -128,
+        -208
+      ],
+      "id": "871ef37f-f9eb-4412-ad0f-15b53320af79",
+      "name": "Test Plan Creator"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "=Create a document in Google Docs",
+        "folderId": "1jEjwXg_RYVMlBFoR_lkh2F8qbkx40YQn",
+        "title": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', ``, 'string') }}"
+      },
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        96
+      ],
+      "id": "db64ba00-29cd-4916-a66f-709487191d3e",
+      "name": "Create a document in Google Docs",
+      "notesInFlow": false,
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "iAIgmkuxnj23gCD8",
+          "name": "Google Docs OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Doc_ID_or_URL', ``, 'string') }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('actionFields0_Text', ``, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        128,
+        -16
+      ],
+      "id": "dbf71dcf-5886-4bd2-a54f-32be71e64a1d",
+      "name": "Update a document in Google Docs",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "iAIgmkuxnj23gCD8",
+          "name": "Google Docs OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        288,
+        16
+      ],
+      "id": "b6c2c1e4-265f-4912-ab16-a87eca94cb9e",
+      "name": "Groq Chat Model2",
+      "credentials": {
+        "groqApi": {
+          "id": "qz9duwrnxMIeXEM3",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "documentId": {
+          "__rl": true,
+          "value": "1dqclFPRlwQyIsj0jww_ceAc2Jc-0whgpLHubW-M2uBI",
+          "mode": "list",
+          "cachedResultName": "Testcases",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dqclFPRlwQyIsj0jww_ceAc2Jc-0whgpLHubW-M2uBI/edit?usp=drivesdk"
+        },
+        "title": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', `Create a Sheet first here.`, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        48
+      ],
+      "id": "743eb6fe-52d5-489a-a09a-bac1a9e5fb68",
+      "name": "Create sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "UaoUF549iPCK9Uqs",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1dqclFPRlwQyIsj0jww_ceAc2Jc-0whgpLHubW-M2uBI",
+          "mode": "list",
+          "cachedResultName": "Testcases",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dqclFPRlwQyIsj0jww_ceAc2Jc-0whgpLHubW-M2uBI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Sheet', `Set Rows and column generated automatically into the sheet`, 'string') }}"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        560,
+        0
+      ],
+      "id": "65311a4a-f529-4436-b702-326d7f43e486",
+      "name": "Append row in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "UaoUF549iPCK9Uqs",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Get an issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Jira Bug Ticket Analyser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Test Plan Creator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get an issue": {
+      "main": [
+        [
+          {
+            "node": "Jira Bug Ticket Analyser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Jira Bug Ticket Analyser",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jira Bug Ticket Analyser": {
+      "main": [
+        [
+          {
+            "node": "Test Plan Creator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Plan Creator": {
+      "main": [
+        [
+          {
+            "node": "Test case creator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a document in Google Docs": {
+      "ai_tool": [
+        [
+          {
+            "node": "Test Plan Creator",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a document in Google Docs": {
+      "ai_tool": [
+        [
+          {
+            "node": "Test Plan Creator",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Test case creator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "Test case creator",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "Test case creator",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3459fe8e-0f90-4537-950f-5aa0ab358157",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "af4178ce1156b585ad275660043ec762ecf76e5ecceec9ae41e8599a49b6f338"
+  },
+  "id": "uvz86HbONmDbj3C8",
+  "tags": []
+}
