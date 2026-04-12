@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "model": "openai/gpt-oss-safeguard-20b",
+        "model": "openai/gpt-oss-20b",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
@@ -111,7 +111,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $json.output }}{{ $('Get an issue').item.json.fields.description }}{{ $('Jira Bug Ticket Analyser').item.json.output }}\n",
+        "text": "={{ $('Get an issue').item.json.fields.description }}{{ $('Jira Bug Ticket Analyser').item.json.output }}\n",
         "options": {
           "systemMessage": "## ROLE  \nYou are a QA Automation Engineer.\n\nYour ONLY job is to generate test cases and write them into the **TestCase_GENERETED** tool.\n\n---\n\n## INPUT  \n- Jira Data  \n- Test Scope  \n- Test Plan  \n\n---\n\n## INSTRUCTIONS  \n\n- Generate atomic test cases based ONLY on provided data  \n- Cover:\n  - Positive  \n  - Negative (if available)  \n  - Validation  \n  - Boundary  \n\n---\n\n## TOOL USAGE (MANDATORY)\n\nWrite each test case into **TestCase_GENERETED**.\n\nColumns:\n- Test Case ID → TC_<JIRA_ID>_<NNN>  \n- Jira ID  \n- Module  \n- Test Case Title  \n- Preconditions  \n- Test Steps  \n- Test Data  \n- Expected Result  \n- Priority  \n- Test Type  \n\n---\n\n## RULES  \n\n- One test case per row  \n- No assumptions  \n- No duplicate test cases  \n- Steps must be numbered  \n\n "
         }
@@ -216,34 +216,6 @@
     },
     {
       "parameters": {
-        "operation": "create",
-        "documentId": {
-          "__rl": true,
-          "value": "1dqclFPRlwQyIsj0jww_ceAc2Jc-0whgpLHubW-M2uBI",
-          "mode": "list",
-          "cachedResultName": "Testcases",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dqclFPRlwQyIsj0jww_ceAc2Jc-0whgpLHubW-M2uBI/edit?usp=drivesdk"
-        },
-        "title": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', `Create a Sheet first here.`, 'string') }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.googleSheetsTool",
-      "typeVersion": 4.7,
-      "position": [
-        416,
-        48
-      ],
-      "id": "743eb6fe-52d5-489a-a09a-bac1a9e5fb68",
-      "name": "Create sheet in Google Sheets",
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "UaoUF549iPCK9Uqs",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
-    },
-    {
-      "parameters": {
         "operation": "append",
         "documentId": {
           "__rl": true,
@@ -254,14 +226,118 @@
         },
         "sheetName": {
           "__rl": true,
-          "mode": "name",
-          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Sheet', `Set Rows and column generated automatically into the sheet`, 'string') }}"
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dqclFPRlwQyIsj0jww_ceAc2Jc-0whgpLHubW-M2uBI/edit#gid=0"
         },
         "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {},
+          "mappingMode": "defineBelow",
+          "value": {
+            "Test Case ID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Test_Case_ID', ``, 'string') }}",
+            "Jira ID  ": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Jira_ID__', ``, 'string') }}",
+            "Module": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Module', ``, 'string') }}",
+            "Test Case Title ": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Test_Case_Title_', ``, 'string') }}",
+            "Preconditions": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Preconditions', ``, 'string') }}",
+            "Test Steps": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Test_Steps', ``, 'string') }}",
+            "Test Data  ": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Test_Data__', ``, 'string') }}",
+            "Expected Result  ": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Expected_Result__', ``, 'string') }}",
+            "Priority": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Priority', ``, 'string') }}",
+            "Test Type ": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Test_Type_', ``, 'string') }}"
+          },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "Test Case ID",
+              "displayName": "Test Case ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Jira ID  ",
+              "displayName": "Jira ID  ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Module",
+              "displayName": "Module",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Test Case Title ",
+              "displayName": "Test Case Title ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Preconditions",
+              "displayName": "Preconditions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Test Steps",
+              "displayName": "Test Steps",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Test Data  ",
+              "displayName": "Test Data  ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Expected Result  ",
+              "displayName": "Expected Result  ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Test Type ",
+              "displayName": "Test Type ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         },
@@ -270,8 +346,8 @@
       "type": "n8n-nodes-base.googleSheetsTool",
       "typeVersion": 4.7,
       "position": [
-        560,
-        0
+        432,
+        32
       ],
       "id": "65311a4a-f529-4436-b702-326d7f43e486",
       "name": "Append row in sheet in Google Sheets",
@@ -395,17 +471,6 @@
         ]
       ]
     },
-    "Create sheet in Google Sheets": {
-      "ai_tool": [
-        [
-          {
-            "node": "Test case creator",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Append row in sheet in Google Sheets": {
       "ai_tool": [
         [
@@ -423,7 +488,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "3459fe8e-0f90-4537-950f-5aa0ab358157",
+  "versionId": "574c875b-5d38-4b1f-985b-b86a13362767",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "af4178ce1156b585ad275660043ec762ecf76e5ecceec9ae41e8599a49b6f338"
