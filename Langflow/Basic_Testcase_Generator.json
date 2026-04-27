@@ -213,7 +213,7 @@
                 "title_case": false,
                 "track_in_telemetry": false,
                 "type": "str",
-                "value": "Groq Key"
+                "value": ""
               },
               "base_url": {
                 "_input_type": "MessageTextInput",
@@ -1277,7 +1277,7 @@
   "id": "d96b25ea-6117-49d4-8a6a-e8c27a65037e",
   "is_component": false,
   "last_tested_version": "1.8.4",
-  "locked": false,
+  "locked": true,
   "name": "Basic_Testcase_Generator",
   "tags": []
 }
