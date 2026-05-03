@@ -1,0 +1,112 @@
+# Advanced RAG Configuration
+
+# ==================================
+# Embedding Models Configuration
+# ==================================
+
+embedding_models:
+  sentence_transformers:
+    - name: "all-MiniLM-L6-v2"
+      dimensions: 384
+      speed: "fast"
+      use_case: "general_purpose"
+      huggingface_url: "sentence-transformers/all-MiniLM-L6-v2"
+      
+    - name: "all-mpnet-base-v2"
+      dimensions: 768
+      speed: "medium"
+      use_case: "high_accuracy"
+      huggingface_url: "sentence-transformers/all-mpnet-base-v2"
+      
+    - name: "BAAI/bge-small-en-v1.5"
+      dimensions: 384
+      speed: "fast"
+      use_case: "balanced"
+      huggingface_url: "BAAI/bge-small-en-v1.5"
+      
+    - name: "intfloat/e5-small-v2"
+      dimensions: 384
+      speed: "fast"
+      use_case: "balanced"
+      huggingface_url: "intfloat/e5-small-v2"
+
+  instructor_models:
+    - name: "hkunlp/instructor-large"
+      dimensions: 768
+      speed: "medium"
+      use_case: "instruction_tuned"
+      huggingface_url: "hkunlp/instructor-large"
+
+# ==================================
+# Vector Databases Configuration
+# ==================================
+
+vector_databases:
+  chromadb:
+    type: "local"
+    persistence: "disk"
+    scalability: "small_to_medium"
+    description: "Easy to use, Python-native vector database"
+    
+  qdrant:
+    type: "local_or_cloud"
+    persistence: "disk"
+    scalability: "large_scale"
+    description: "Production-ready vector similarity search engine"
+    
+  faiss:
+    type: "local"
+    persistence: "memory_or_disk"
+    scalability: "large_scale"
+    description: "Efficient similarity search library"
+    
+  weaviate:
+    type: "local_or_cloud"
+    persistence: "disk"
+    scalability: "large_scale"
+    description: "Cloud-native, modular vector search engine"
+
+# ==================================
+# Re-ranker Models Configuration
+# ==================================
+
+reranker_models:
+  cross_encoders:
+    - name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      speed: "medium"
+      accuracy: "high"
+      huggingface_url: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      
+    - name: "cross-encoder/ms-marco-MiniLM-L-12-v2"
+      speed: "slow"
+      accuracy: "very_high"
+      huggingface_url: "cross-encoder/ms-marco-MiniLM-L-12-v2"
+      
+  sentence_transformers_rerankers:
+    - name: "sentence-transformers/ms-marco-MiniLM-L-6-v2"
+      speed: "medium"
+      accuracy: "high"
+      huggingface_url: "sentence-transformers/ms-marco-MiniLM-L-6-v2"
+
+# ==================================
+# Recommended Combinations
+# ==================================
+
+recommended_combinations:
+  lightweight:
+    embedding: "all-MiniLM-L6-v2"
+    vector_db: "chromadb"
+    reranker: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    use_case: "development_and_small_datasets"
+    
+  balanced:
+    embedding: "BAAI/bge-small-en-v1.5"
+    vector_db: "qdrant"
+    reranker: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    use_case: "production_medium_workload"
+    
+  high_performance:
+    embedding: "intfloat/e5-small-v2"
+    vector_db: "weaviate"
+    reranker: "cross-encoder/ms-marco-MiniLM-L-12-v2"
+    use_case: "production_large_scale"
