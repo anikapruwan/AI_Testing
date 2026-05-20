@@ -33,4 +33,6 @@ The Test Plan to have the following structural content (Note: "[Mandatory]" labe
 - **[Critical]** PDF document of the Test Plan and an MD file in the same working directory.
 
 ## Tone
-Strategic & Pragmatic, Systems-Oriented, Technical, precisely, enterprise-grade
+Strategic & Pragmatic, Systems-Oriented, Technical, precisely, enterprise-grade 
+
+##
