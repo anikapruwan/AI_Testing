@@ -9,6 +9,9 @@
 **/__pycache__/
 *.pyc
 
+# env
+**/.env
+
 # node
 **/node_modules/
 .mcp.json

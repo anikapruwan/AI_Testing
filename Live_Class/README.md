@@ -378,4 +378,151 @@ All collections live in the **`ATB2X Demo`** Postman workspace (`b4d9ec74-5bb8-4
 
 ---
 
+## 📖 Chapter 11: Python Learning Fundamentals
+
+**Directory:** `Chapter_11_Python_Learning/`
+
+A self-paced Python primer for QA engineers. Each file is a standalone, runnable lesson with inline comments and a quick-reference table at the bottom.
+
+### Chapter 11 Learning Path
+
+```mermaid
+flowchart LR
+    Y1(Hello Python + Vars) --> Y2(Identifiers & Keywords)
+    Y2 --> Y3(Case Styles)
+    Y3 --> Y4(Literals)
+    Y4 --> Y5(Operators)
+    Y5 --> Y6(Strings)
+    Y6 --> Y7(List / Tuple / Dict)
+
+    style Y1 fill:#e3f2fd,stroke:#1565c0
+    style Y2 fill:#e3f2fd,stroke:#1565c0
+    style Y3 fill:#e3f2fd,stroke:#1565c0
+    style Y4 fill:#e3f2fd,stroke:#1565c0
+    style Y5 fill:#e3f2fd,stroke:#1565c0
+    style Y6 fill:#e3f2fd,stroke:#1565c0
+    style Y7 fill:#e3f2fd,stroke:#1565c0
+```
+
+### Files
+
+| # | File | Topic |
+| :---: | :--- | :--- |
+| 01 | `01_Hello_Python.py` | First `print`, running a `.py` file |
+| 02 | `02_Basic.py` | Variables, types (str, int, float, bool, None) |
+| 03 | `03_Basic2.py` | Type conversions, input/output |
+| 04 | `04_AIAGent_Query.py` | Calling an LLM from Python |
+| 05 | `05_Identifier.py` | Identifier rules — allowed chars, no spaces, no `$`/`-`/`.`, PEP 8 |
+| 06 | `06_Keyword.py` | Reserved keywords via `keyword.kwlist` |
+| 07 | `07_Case.py` | snake_case, PascalCase, camelCase, kebab-case, dunder |
+| 08 | `08_Literals.py` | int/float/complex, strings (raw/f-string/bytes), bool, None, collections |
+| 09 | `09_Operators.py` | Arithmetic, logical, bitwise, identity, membership, ternary, precedence table |
+| 10 | `10_Strings.py` | Full string-method reference (case, trim, search, split/join, format) |
+| 11 | `11_List_Tuple_Dict.py` | Collection methods with QA examples |
+| 12 | `12_Tuple.py` | Tuple immutability demo |
+
+---
+
+## 📖 Chapter 12: TestCase MCP — Expose Your Test Suite to Any LLM
+
+**Directory:** `Chapter_12_MCP_Creation/`
+
+A local **FastMCP** server (`tc_mcp.py`) that wraps a 478-row VWO test case CSV and exposes it as MCP tools, resources, and prompts. Any MCP-compatible client (Claude Desktop, Cursor, Claude Code, MCP Inspector) can connect over stdio and search, filter, fetch, or **create** test cases in natural language.
+
+### Chapter 12 Architecture
+
+```mermaid
+flowchart LR
+    CSV[testcases_vwo_100.csv<br/>478 rows] --> SERVER[tc_mcp.py<br/>FastMCP]
+    SERVER --> TOOLS[15 tools<br/>search · stats · add]
+    SERVER --> RES[2 resources + 1 template<br/>testcases://...]
+    SERVER --> PROMPTS[2 prompts<br/>review · regression pack]
+    SERVER --> CLIENT[MCP Client<br/>Claude Desktop · Cursor · Inspector]
+
+    style CSV fill:#fef3c7,stroke:#92400e
+    style SERVER fill:#cffafe,stroke:#06b6d4
+    style CLIENT fill:#ede7f6,stroke:#4527a0,stroke-width:2px
+```
+
+### What it exposes
+
+| Type | Items | Notes |
+| :--- | :--- | :--- |
+| **Tools (15)** | `list_test_cases`, `get_test_case`, `search_by_priority`, `search_by_module`, `search_by_label`, `search_by_owner`, `search_by_status`, `search_by_sprint`, `search_test_cases` (multi-filter + free text), `list_priorities / modules / labels / owners`, `stats`, `add_test_case` (write — persists to CSV) | All filters AND-combined; auto-id `TC-00###` on add |
+| **Resources** | `testcases://all`, `testcases://stats`, `testcases://{test_case_id}` | Browsable read-only data |
+| **Prompts** | `review_test_case`, `suggest_regression_pack` | Reusable LLM instructions |
+
+### Run + inspect
+
+```bash
+cd Chapter_12_MCP_Creation
+python3 -m venv venv && source venv/bin/activate
+pip install fastmcp
+python tc_mcp.py                                         # stdio
+npx @modelcontextprotocol/inspector ./venv/bin/python ./tc_mcp.py
+# Inspector: http://localhost:6274
+```
+
+See [`Chapter_12_MCP_Creation/README.md`](Chapter_12_MCP_Creation/README.md) for Claude Desktop / Cursor / Claude Code configs and [`PROMPT.md`](Chapter_12_MCP_Creation/PROMPT.md) for the original build prompts and lesson recap.
+
+---
+
+## 📖 Chapter 13: Multi-Agent QA with CrewAI
+
+**Directory:** `Chapter_13_CREW_AI_Agent/`
+
+Three progressively-richer **CrewAI** examples that show how to assemble specialist QA agents (analyst, researcher, writer, triage, root-cause, test strategy) on top of **GPT-OSS 120B** running on Groq. Includes a live **Jira integration** that pulls bugs straight from `atlassian.net`.
+
+### Chapter 13 Agent Flow
+
+```mermaid
+flowchart LR
+    JIRA[Jira REST API<br/>atlassian.net] --> TRIAGE[Bug Triage Analyst<br/>P0..P4 + category]
+    TRIAGE --> RCA[Root Cause Specialist<br/>UI / API / DB / Infra]
+    RCA --> TEST[Test Strategy Advisor<br/>Playwright TS]
+    TEST --> OUT[📋 Triage Report]
+
+    style JIRA fill:#fef3c7,stroke:#92400e
+    style TRIAGE fill:#e8f5e9,stroke:#2e7d32
+    style RCA fill:#e8f5e9,stroke:#2e7d32
+    style TEST fill:#e8f5e9,stroke:#2e7d32
+    style OUT fill:#ede7f6,stroke:#4527a0,stroke-width:2px
+```
+
+### Examples
+
+| # | File | What it does |
+| :---: | :--- | :--- |
+| 01 | `01_Test_Analyst_Agent.py` | Single agent — senior QA generates 5–10 test cases for the VWO login page. |
+| 02 | `02_Research_Write_AI_Agent.py` | Two sequential agents — researcher surfaces the top-5 bug categories, writer turns them into a PR-time prevention checklist. |
+| 03 | `03_Building_QABugTriageCrew.py` | Three agents + Jira API — fetches a real ticket, triages it (severity, category), runs RCA, recommends Playwright tests. |
+
+### Setup
+
+`.env` (inside `Chapter_13_CREW_AI_Agent/`):
+
+```
+GROQ_KEY=gsk_xxxxx
+JIRA_EMAIL=you@example.com
+JIRA_API_TOKEN=xxxxx
+```
+
+> `.env` is gitignored (`**/.env`). Never paste API keys into chat or commits — rotate immediately if leaked.
+
+```bash
+cd Chapter_13_CREW_AI_Agent
+python3 -m venv venv && source venv/bin/activate
+pip install crewai python-dotenv requests
+venv/bin/python 01_Test_Analyst_Agent.py
+venv/bin/python 02_Research_Write_AI_Agent.py
+venv/bin/python 03_Building_QABugTriageCrew.py
+```
+
+### Notes / gotchas
+
+- **Model id:** `openai/openai/gpt-oss-120b` — the leading `openai/` tells LiteLLM to route through the OpenAI provider; `openai/gpt-oss-120b` is Groq's actual model id.
+- **CrewAI 1.14.6 `cache_breakpoint` bug:** Groq's OpenAI-compatible endpoint rejects a `cache_breakpoint` field that CrewAI injects. All three scripts subclass `LLM` → `GroqLLM` and strip the field before every call.
+
+---
+
 *Continue following this repository for future chapters exploring deeper AI integrations!*
