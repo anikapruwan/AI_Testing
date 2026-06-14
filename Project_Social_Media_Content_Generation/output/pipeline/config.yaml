@@ -1,0 +1,85 @@
+# LinkedIn Automation Pipeline — Configuration
+# Copy to config.yaml and fill in your values
+
+# Command Code settings
+command_code:
+  max_turns: 3
+  trust: true
+
+# Publishing — choose ONE provider
+publishing:
+  # Providers tried in order. First success wins.
+  providers:
+    - buffer
+    - upload-post
+
+  upload_post:
+    api_key: "your-upload-post-api-key"
+    api_url: "https://api.upload-post.com/api"
+    user: "linkedin"
+
+  buffer:
+    access_token: "your-buffer-access-token"
+    profile_id: "your-linkedin-profile-id"
+
+# Image generation — providers tried in order, first success wins
+image_generation:
+  providers:
+    - google-imagen
+    - dall-e
+    - stability
+    - comfyui
+
+  # Option A: Google Imagen (via AI Studio — free tier)
+  google_imagen:
+    api_key: "your-google-ai-studio-key"
+    model: "gemini-2.0-flash-exp-image-generation"
+
+  # Option B: DALL-E 3 (OpenAI API)
+  dall_e:
+    api_key: "sk-your-openai-api-key"
+    model: "dall-e-3"
+    size: "1024x1024"
+    quality: "standard"
+
+  # Option C: Stability AI (via API)
+  stability:
+    api_key: "sk-your-stability-key"
+    engine: "stable-diffusion-xl-1024-v1-0"
+
+  # Option D: ComfyUI (local)
+  comfyui:
+    server_url: "http://127.0.0.1:8188"
+    workflow_template: "workflow_sdxl.json"
+    checkpoint: "sd_xl_base_1.0.safetensors"
+    width: 1024
+    height: 1024
+    steps: 25
+    cfg: 7
+    timeout_seconds: 120
+    poll_interval: 3
+
+# Output
+output:
+  log_dir: "./logs"
+  history_file: "./logs/post_history.json"
+
+# Content preferences
+content:
+  max_chars: 1300
+  hashtag_count: 8
+  fixed_hashtags:
+    - QAAutomation
+    - SoftwareTesting
+    - AIinTesting
+  domains:
+    - QA Automation
+    - AI in Software Testing
+    - Self-healing Test Frameworks
+    - API Testing with LLMs
+    - Career Growth in QA
+    - Flaky Test Detection
+    - Test Data Generation
+    - Observability-Driven Testing
+    - Prompt Engineering for QA
+    - Security Testing and AI

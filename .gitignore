@@ -45,3 +45,4 @@ lerna-debug.log*
 
 # Application Data
 .gemini/
+Project_Social_Media_Content_Generation/output/pipeline/config.local.yaml
