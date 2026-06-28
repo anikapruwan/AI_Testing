@@ -22,43 +22,6 @@ publishing:
     access_token: "your-buffer-access-token"
     profile_id: "your-linkedin-profile-id"
 
-# Image generation — providers tried in order, first success wins
-image_generation:
-  providers:
-    - google-imagen
-    - dall-e
-    - stability
-    - comfyui
-
-  # Option A: Google Imagen (via AI Studio — free tier)
-  google_imagen:
-    api_key: "your-google-ai-studio-key"
-    model: "gemini-2.0-flash-exp-image-generation"
-
-  # Option B: DALL-E 3 (OpenAI API)
-  dall_e:
-    api_key: "sk-your-openai-api-key"
-    model: "dall-e-3"
-    size: "1024x1024"
-    quality: "standard"
-
-  # Option C: Stability AI (via API)
-  stability:
-    api_key: "sk-your-stability-key"
-    engine: "stable-diffusion-xl-1024-v1-0"
-
-  # Option D: ComfyUI (local)
-  comfyui:
-    server_url: "http://127.0.0.1:8188"
-    workflow_template: "workflow_sdxl.json"
-    checkpoint: "sd_xl_base_1.0.safetensors"
-    width: 1024
-    height: 1024
-    steps: 25
-    cfg: 7
-    timeout_seconds: 120
-    poll_interval: 3
-
 # Output
 output:
   log_dir: "./logs"
@@ -66,6 +29,7 @@ output:
 
 # Content preferences
 content:
+  generate_image: true
   max_chars: 1300
   hashtag_count: 8
   fixed_hashtags:
@@ -83,3 +47,17 @@ content:
     - Observability-Driven Testing
     - Prompt Engineering for QA
     - Security Testing and AI
+
+# Image generation via Cloudflare Workers API
+image_generation:
+  api_url: "https://image-create.anikapruwan.workers.dev"
+  api_key: "your-api-key"  # Set in config.local.yaml
+  output_dir: "./images"
+
+# Image hosting — makes generated images publicly accessible for Buffer
+image_hosting:
+  provider: "imgbb"  # or "custom"
+  api_key: "your-imgbb-api-key"  # Set in config.local.yaml; get one free at https://api.imgbb.com
+  # For custom provider:
+  # upload_url: "https://your-upload-endpoint.com/upload"
+  # url_field: "url"

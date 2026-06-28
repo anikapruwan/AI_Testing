@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 LinkedIn Automated Content Pipeline
-Vibe-coded: Command Code → ComfyUI → LinkedIn
+Vibe-coded: Command Code → Cloudflare Workers → Buffer → LinkedIn
 """
 
 import json
@@ -83,158 +83,83 @@ def parse_json_response(raw_text):
     if start == -1 or end == 0:
         raise ValueError("No JSON object found in Command Code output")
     return json.loads(text[start:end])
-# ── Image Generation ──────────────────────────────────────────────────────────
 
 
-def generate_image_google_imagen(api_key, model, prompt):
-    """Generate image via Google AI Studio Imagen (free tier)."""
-    import base64
+def generate_image(prompt, config):
+    """Call the Cloudflare Workers image generation API, save JPEG to disk, return filepath."""
+    img_cfg = config["image_generation"]
+    url = img_cfg["api_url"]
+    api_key = img_cfg["api_key"]
 
-    body = json.dumps({
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "responseModalities": ["TEXT", "IMAGE"],
+    body = json.dumps({"prompt": prompt}).encode()
+    req = urllib.request.Request(
+        url, data=body,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "Python/3.12",
         },
-    }).encode()
+    )
+    resp = http_request(req)
+    img_data = resp.read()
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-
-    for attempt in range(3):
-        try:
-            req = urllib.request.Request(url, data=body,
-                headers={"x-goog-api-key": api_key, "Content-Type": "application/json"})
-            resp = json.loads(http_request(req, timeout=60).read())
-
-            for part in resp.get("candidates", [{}])[0].get("content", {}).get("parts", []):
-                if "inlineData" in part:
-                    img_data = base64.b64decode(part["inlineData"]["data"])
-                    mime = part["inlineData"].get("mimeType", "image/png")
-                    ext = "png" if "png" in mime else "jpg"
-                    filename = f"imagen_{int(time.time())}.{ext}"
-                    Path("logs").mkdir(parents=True, exist_ok=True)
-                    path = os.path.join("logs", filename)
-                    with open(path, "wb") as f:
-                        f.write(img_data)
-                    return path, filename
-
-            raise ValueError("No image returned")
-
-        except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < 2:
-                wait = (attempt + 1) * 15
-                print(f"      Rate limited, retrying in {wait}s...")
-                time.sleep(wait)
-                continue
-            raise
-
-
-
-def generate_image_dalle(api_key, model, size, quality, prompt):
-    body = json.dumps({"model": model, "prompt": prompt, "n": 1, "size": size, "quality": quality}).encode()
-    req = urllib.request.Request("https://api.openai.com/v1/images/generations", data=body,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
-    resp = json.loads(http_request(req).read())
-    url = resp["data"][0]["url"]
-    filename = f"dalle_{int(time.time())}.png"
-    return url, filename
-
-
-def generate_image_stability(api_key, engine, prompt):
-    body = json.dumps({"text_prompts": [{"text": prompt, "weight": 1}], "cfg_scale": 7,
-        "height": 1024, "width": 1024, "samples": 1, "steps": 30}).encode()
-    req = urllib.request.Request(f"https://api.stability.ai/v1/generation/{engine}/text-to-image",
-        data=body, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
-    resp = json.loads(http_request(req, timeout=60).read())
-    import base64
-    img_data = base64.b64decode(resp["artifacts"][0]["base64"])
-    filename = f"stability_{int(time.time())}.png"
-    Path("logs").mkdir(parents=True, exist_ok=True)
-    path = os.path.join("logs", filename)
-    with open(path, "wb") as f:
+    out_dir = img_cfg.get("output_dir", "images")
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"linkedin_{timestamp}.jpg"
+    filepath = os.path.join(out_dir, filename)
+    with open(filepath, "wb") as f:
         f.write(img_data)
-    return path, filename
+
+    return filepath
 
 
-def generate_image_comfyui(server_url, prompt, template_file, width, height, steps, cfg, timeout_s, poll_s):
-    with open(template_file) as f:
-        workflow = json.load(f)
-    for nid, node in workflow.items():
-        inp = node.get("inputs", {})
-        if inp and ("text" in inp or "prompt" in inp):
-            key = "text" if "text" in inp else "prompt"
-            inp[key] = prompt
-            if "steps" in inp: inp["steps"] = steps
-            if "cfg" in inp: inp["cfg"] = cfg
-            break
+def upload_image_to_hosting(filepath, config):
+    """Upload an image to a public image hosting service, return the public URL."""
+    host_cfg = config.get("image_hosting", {})
+    provider = host_cfg.get("provider", "imgbb")
+    api_key = host_cfg.get("api_key", "")
 
-    req = urllib.request.Request(f"{server_url}/prompt",
-        data=json.dumps({"prompt": workflow}).encode(),
-        headers={"Content-Type": "application/json"})
-    prompt_id = json.loads(http_request(req).read())["prompt_id"]
+    if not api_key:
+        raise ValueError(f"Image hosting provider '{provider}' requires an api_key in config")
 
-    elapsed = 0
-    while elapsed < timeout_s:
-        time.sleep(poll_s)
-        elapsed += poll_s
-        try:
-            history = json.loads(http_request(urllib.request.Request(f"{server_url}/history/{prompt_id}")).read())
-            if prompt_id in history:
-                for outputs in history[prompt_id]["outputs"].values():
-                    for img in outputs.get("images", []):
-                        url = f"{server_url}/view?filename={img['filename']}&subfolder={img.get('subfolder','')}"
-                        return url, img["filename"]
-        except Exception:
-            continue
-    raise TimeoutError(f"ComfyUI timed out after {timeout_s}s")
+    if provider == "imgbb":
+        with open(filepath, "rb") as f:
+            img_data = f.read()
 
+        boundary = "----ImgBoundary" + str(int(time.time()))
+        body = b""
+        body += f"--{boundary}\r\n".encode()
+        body += b'Content-Disposition: form-data; name="image"; filename="image.jpg"\r\n'
+        body += b"Content-Type: image/jpeg\r\n\r\n"
+        body += img_data
+        body += f"\r\n--{boundary}--\r\n".encode()
 
-def download_image(image_url, filename):
-    urllib.request.urlretrieve(image_url, filename)
-    return filename
+        req = urllib.request.Request(
+            f"https://api.imgbb.com/1/upload?key={api_key}",
+            data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        )
+        resp = json.loads(http_request(req).read())
+        if not resp.get("success"):
+            raise RuntimeError(f"imgbb upload failed: {resp.get('error', {}).get('message', str(resp))}")
+        return resp["data"]["url"]
 
+    elif provider == "custom":
+        upload_url = host_cfg["upload_url"]
+        url_field = host_cfg.get("url_field", "url")
+        headers = {"Content-Type": "image/jpeg"}
+        if host_cfg.get("api_key"):
+            headers["Authorization"] = f"Bearer {host_cfg['api_key']}"
 
-def generate_image(image_cfg, prompt):
-    """Try each image provider in order. First success wins."""
-    providers = image_cfg.get("providers", ["comfyui"])
-    last_error = None
+        with open(filepath, "rb") as f:
+            img_data = f.read()
+        req = urllib.request.Request(upload_url, data=img_data, headers=headers)
+        resp = json.loads(http_request(req).read())
+        return resp[url_field]
 
-    for provider in providers:
-        try:
-            print(f"      Trying image generator: {provider}...")
-
-            if provider == "google-imagen":
-                cfg = image_cfg["google_imagen"]
-                path, filename = generate_image_google_imagen(cfg["api_key"], cfg["model"], prompt)
-                return path, filename
-
-            elif provider == "dall-e":
-                cfg = image_cfg["dall_e"]
-                url, filename = generate_image_dalle(cfg["api_key"], cfg["model"], cfg["size"], cfg["quality"], prompt)
-                return url, filename
-
-            elif provider == "stability":
-                cfg = image_cfg["stability"]
-                path, filename = generate_image_stability(cfg["api_key"], cfg["engine"], prompt)
-                return path, filename
-
-            elif provider == "comfyui":
-                cfg = image_cfg["comfyui"]
-                url, filename = generate_image_comfyui(
-                    cfg["server_url"], prompt, cfg["workflow_template"],
-                    cfg["width"], cfg["height"], cfg["steps"], cfg["cfg"],
-                    cfg["timeout_seconds"], cfg["poll_interval"],
-                )
-                return url, filename
-
-            else:
-                raise ValueError(f"Unknown image provider: {provider}")
-
-        except Exception as e:
-            last_error = f"{provider}: {e}"
-            print(f"      ❌ {last_error}")
-            continue
-
-    raise RuntimeError(f"All image providers failed: {last_error}")
+    else:
+        raise ValueError(f"Unknown image hosting provider: {provider}")
 
 
 def linkedin_upload_image(access_token, api_version, person_urn, image_path):
@@ -284,11 +209,8 @@ def linkedin_create_post(access_token, api_version, person_urn, post_text, image
     return resp.get("id", "unknown")
 
 
-def publish_upload_post(api_key, user, post_text, image_path=None):
+def publish_upload_post(api_key, user, post_text):
     auth_header = f"Apikey {api_key}"
-
-    if image_path:
-        return publish_upload_post_with_image(api_key, user, post_text, image_path)
 
     boundary = "----PipelineBoundary" + str(int(time.time()))
     body = ""
@@ -314,48 +236,20 @@ def publish_upload_post(api_key, user, post_text, image_path=None):
     return "unknown"
 
 
-def publish_upload_post_with_image(api_key, user, post_text, image_path):
-    auth_header = f"Apikey {api_key}"
-    boundary = "----PipelineBoundary" + str(int(time.time()))
-    body_bytes = bytearray()
-
-    def add_field(name, value):
-        body_bytes += f"--{boundary}\r\n".encode()
-        body_bytes += f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode()
-        body_bytes += value.encode()
-        body_bytes += b"\r\n"
-
-    add_field("user", user)
-    add_field("platform[]", "linkedin")
-    add_field("title", post_text)
-
-    with open(image_path, "rb") as f:
-        img_data = f.read()
-    filename = os.path.basename(image_path)
-    body_bytes += f"--{boundary}\r\n".encode()
-    body_bytes += f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'.encode()
-    body_bytes += b"Content-Type: image/jpeg\r\n\r\n"
-    body_bytes += img_data
-    body_bytes += f"\r\n--{boundary}--\r\n".encode()
-
-    req = urllib.request.Request(
-        "https://api.upload-post.com/api/upload_photos",
-        data=bytes(body_bytes),
-        headers={
-            "Authorization": auth_header,
-            "Content-Type": f"multipart/form-data; boundary={boundary}",
-        },
-    )
-    resp = json.loads(http_request(req).read())
-    if resp.get("success"):
-        return resp.get("request_id", resp.get("job_id", "published"))
-    return "unknown"
-
-
-def publish_post(publishing_cfg, post_text, image_path=None):
-    """Try each provider in order. First success wins. Logs failures and continues."""
+def publish_post(publishing_cfg, post_text, image_filepath=None, config=None):
+    """Try each provider in order. First success wins."""
     providers = publishing_cfg.get("providers", ["upload-post"])
     last_error = None
+    media_url = None
+
+    # If we have an image, upload it to a public hosting service first
+    if image_filepath:
+        try:
+            media_url = upload_image_to_hosting(image_filepath, config)
+            print(f"      Image hosted at: {media_url}")
+        except Exception as e:
+            print(f"      ⚠️ Image hosting failed: {e}")
+            print(f"      Continuing text-only...")
 
     for provider in providers:
         try:
@@ -363,22 +257,16 @@ def publish_post(publishing_cfg, post_text, image_path=None):
 
             if provider == "upload-post":
                 cfg = publishing_cfg["upload_post"]
-                result = publish_upload_post(cfg["api_key"], cfg.get("user", ""), post_text, image_path)
+                result = publish_upload_post(cfg["api_key"], cfg.get("user", ""), post_text)
 
             elif provider == "buffer":
                 cfg = publishing_cfg["buffer"]
-                result = publish_buffer(cfg["access_token"], cfg["profile_id"], post_text, image_path)
+                result = publish_buffer(cfg["access_token"], cfg["profile_id"], post_text, media_url)
 
             elif provider == "linkedin-direct":
                 cfg = publishing_cfg["linkedin"]
-                if image_path:
-                    image_urn = linkedin_upload_image(
-                        cfg["access_token"], cfg["api_version"], cfg["person_urn"], image_path
-                    )
-                else:
-                    image_urn = None
                 result = linkedin_create_post(
-                    cfg["access_token"], cfg["api_version"], cfg["person_urn"], post_text, image_urn
+                    cfg["access_token"], cfg["api_version"], cfg["person_urn"], post_text, None
                 )
 
             else:
@@ -398,14 +286,7 @@ def publish_post(publishing_cfg, post_text, image_path=None):
     return f"all-failed: {last_error}"
 
 
-def publish_buffer(access_token, profile_id, post_text, image_path=None):
-    """
-    Publish via Buffer GraphQL API — https://api.buffer.com
-    Mutation: createPost with variables (handles special chars safely)
-    """
-    if image_path:
-        raise Exception("Buffer createPost does not support inline images; use Upload-Post.")
-
+def publish_buffer(access_token, profile_id, post_text, media_url=None):
     mutation = """
     mutation CreatePost($input: CreatePostInput!) {
       createPost(input: $input) {
@@ -422,6 +303,7 @@ def publish_buffer(access_token, profile_id, post_text, image_path=None):
             "text": post_text,
             "schedulingType": "automatic",
             "mode": "shareNow",
+            "assets": [{"image": {"url": media_url}}] if media_url else [],
         }
     }
 
@@ -472,7 +354,6 @@ def main():
     config = load_config(config_path)
 
     content_cfg = config["content"]
-    image_cfg = config.get("image_generation", {"providers": ["comfyui"]})
     publishing_cfg = config["publishing"]
     output_cfg = config["output"]
 
@@ -489,45 +370,42 @@ def main():
     print(f"      Topic: {data.get('hashtags', [''])[0]}")
     print(f"      Post length: {len(data.get('post_text', ''))} chars")
 
+    # Image generation
+    image_filepath = None
+    if content_cfg.get("generate_image", True):
+        print("[2/6] Generating image...")
+        try:
+            image_filepath = generate_image(data["image_prompt"], config)
+            print(f"      Image saved: {image_filepath}")
+        except Exception as e:
+            print(f"      ⚠️ Image generation failed: {e}")
+            print(f"      Continuing with text-only post...")
+
     if dry_run:
         print("\n--- DRY RUN OUTPUT ---")
         print(f"\n{data['post_text']}\n")
         print(f"Hashtags: {' '.join(['#' + t for t in data['hashtags']])}")
         print(f"\nImage Prompt:\n{data['image_prompt']}")
+        if image_filepath:
+            print(f"\nImage saved at: {image_filepath}")
         print("\n✅ Dry run complete — content generated successfully.")
         return
 
-    try:
-        print("[2/6] Generating image...")
-        image_url, image_filename = generate_image(image_cfg, data["image_prompt"])
-        print(f"      Image: {image_url}")
-
-        if image_url.startswith("http"):
-            print("[3/6] Downloading generated image...")
-            local_path = os.path.join(output_cfg.get("log_dir", "./logs"), image_filename)
-            download_image(image_url, local_path)
-            image_path = local_path
-        else:
-            image_path = image_url
-
-    except (FileNotFoundError, ConnectionError, TimeoutError, RuntimeError) as e:
-        print(f"      ⚠️  Image generation failed: {e}. Publishing text-only.")
-        image_path = None
-
-    print("[4/6] Publishing...")
-    post_id = publish_post(publishing_cfg, data["post_text"], image_path)
+    print("[3/6] Publishing...")
+    post_id = publish_post(publishing_cfg, data["post_text"], image_filepath, config)
     print(f"      Post ID: {post_id}")
 
-    print("[5/6] Logging...")
+    print("[4/6] Logging...")
     date_str = datetime.now().strftime("%Y-%m-%d")
     record = {
         "date": date_str,
         "post_id": post_id,
         "post_text": data["post_text"],
-        "image_prompt": data["image_prompt"],
+        "image_prompt": data.get("image_prompt", ""),
         "hashtags": data["hashtags"],
-        "image_filename": image_path if image_path else "none",
-        "status": "published" if post_id != "unknown" else "failed",
+        "image_filename": os.path.basename(image_filepath) if image_filepath else "none",
+        "image_generated": image_filepath is not None,
+        "status": "published" if not str(post_id).startswith("all-failed") else "failed",
     }
     log_post(output_cfg["log_dir"], output_cfg["history_file"], record)
 

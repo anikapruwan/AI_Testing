@@ -13,4 +13,4 @@
 - Support multiple publishing backends (Upload-Post.com, Buffer) with automatic fallback — if one platform fails, the next automatically posts. Confidence: 0.75
 
 # image-generation
-- Use only Google Imagen (free tier) for image generation — remove DALL-E, Stability, ComfyUI. Confidence: 0.65
+- Generate images for posts using the Cloudflare Workers API at `https://image-create.anikapruwan.workers.dev` with Bearer token auth. Exclude n8n, Google Imagen, DALL-E, Stability, and ComfyUI. Confidence: 0.75
