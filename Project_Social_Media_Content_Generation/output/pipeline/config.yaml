@@ -48,11 +48,15 @@ content:
     - Prompt Engineering for QA
     - Security Testing and AI
 
-# Image generation via Cloudflare Workers API
+# Image generation providers (tried in order; first success wins)
 image_generation:
+  providers:
+    - cloudflare
+    - freegen
   api_url: "https://image-create.anikapruwan.workers.dev"
   api_key: "your-api-key"  # Set in config.local.yaml
   output_dir: "./images"
+  freegen_aspect_ratio: "4:3"  # 1:1, 4:3, 3:4, 16:9, 9:16
 
 # Image hosting — makes generated images publicly accessible for Buffer
 image_hosting:

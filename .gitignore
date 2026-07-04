@@ -48,3 +48,4 @@ lerna-debug.log*
 Project_Social_Media_Content_Generation/output/pipeline/config.local.yaml
 Project_Social_Media_Content_Generation/test_image.jpg
 *.jpg
+ai_artwork.png

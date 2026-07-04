@@ -8,3 +8,6 @@
 # backend
 - Use TypeScript for backend. Confidence: 0.70
 
+# image-generation
+- Ensure image generation prompts are closely aligned with and reflect the actual post content. Confidence: 0.80
+

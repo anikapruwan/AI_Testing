@@ -17,6 +17,15 @@ from pathlib import Path
 
 import certifi
 import yaml
+import asyncio
+import base64
+import hashlib
+
+try:
+    import websockets
+    HAS_WEBSOCKETS = True
+except ImportError:
+    HAS_WEBSOCKETS = False
 
 
 def http_request(req, timeout=30):
@@ -45,8 +54,10 @@ def build_system_prompt(domains, max_chars, hashtag_count, fixed_hashtags):
         f"- post_text under {max_chars} characters\n"
         f"- Hashtags array: include at least {len(fixed_hashtags)} fixed hashtags: [{fixed_str}], "
         f"plus {hashtag_count - len(fixed_hashtags)} unique topic-relevant ones (total exactly {hashtag_count})\n"
-        f"- image_prompt: ultra-detailed, cinematic, photorealistic, 8k, "
-        f"about software testing / QA / AI themes\n"
+        f"- image_prompt: FIRST generate the post_text, THEN write a cinematic, "
+        f"photorealistic 8k image_prompt that VISUALLY DEPICTS the SPECIFIC CONCEPTS, "
+        f"metaphors, and ideas from YOUR post. Do NOT write a generic QA/software image. "
+        f"The image must be a literal visual representation of exactly what the post is about\n"
         f"- Tone: professional, authoritative, no fluff"
     )
 
@@ -85,8 +96,8 @@ def parse_json_response(raw_text):
     return json.loads(text[start:end])
 
 
-def generate_image(prompt, config):
-    """Call the Cloudflare Workers image generation API, save JPEG to disk, return filepath."""
+def generate_image_cloudflare(prompt, config):
+    """Call the Cloudflare Workers image generation API, return image bytes."""
     img_cfg = config["image_generation"]
     url = img_cfg["api_url"]
     api_key = img_cfg["api_key"]
@@ -100,18 +111,133 @@ def generate_image(prompt, config):
             "User-Agent": "Python/3.12",
         },
     )
-    resp = http_request(req)
-    img_data = resp.read()
 
-    out_dir = img_cfg.get("output_dir", "images")
-    Path(out_dir).mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"linkedin_{timestamp}.jpg"
-    filepath = os.path.join(out_dir, filename)
-    with open(filepath, "wb") as f:
-        f.write(img_data)
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            resp = http_request(req)
+            return resp.read()
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise RuntimeError(f"Cloudflare API failed after {max_retries} attempts: {e}")
+            print(f"      ⚠️ Attempt {attempt + 1} failed: {e}. Retrying in 5 seconds...")
+            time.sleep(5)
 
-    return filepath
+
+def _freegen_sign_prompt(prompt):
+    body = json.dumps({"prompt": prompt}).encode()
+    req = urllib.request.Request(
+        "https://prompt-signer.freegen.app", data=body,
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "Referer": "https://freegen.app/",
+            "Origin": "https://freegen.app",
+        },
+    )
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    resp = json.loads(urllib.request.urlopen(req, timeout=30, context=ctx).read())
+    return resp["ts"], resp["sig"]
+
+
+def _freegen_request_generation(prompt, ts, sig, aspect_ratio="4:3"):
+    body = json.dumps({"prompt": prompt, "ts": ts, "sig": sig, "ratio_id": aspect_ratio}).encode()
+    req = urllib.request.Request(
+        "https://image-generator.freegen.app", data=body,
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "Referer": "https://freegen.app/",
+            "Origin": "https://freegen.app",
+        },
+    )
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    resp = json.loads(urllib.request.urlopen(req, timeout=30, context=ctx).read())
+    return resp["job_id"]
+
+
+def _freegen_ws_auth(job_id):
+    ts = int(time.time())
+    msg = job_id + str(ts)
+    h = hashlib.sha256(msg.encode()).hexdigest()
+    return base64.b64encode(h.encode()).decode()[:20] + ":" + str(ts)
+
+
+async def _freegen_listen_ws(job_id, timeout_sec=90):
+    auth = _freegen_ws_auth(job_id)
+    ws_ssl = ssl.create_default_context()
+    ws_ssl.check_hostname = False
+    ws_ssl.verify_mode = ssl.CERT_NONE
+
+    async with websockets.connect(
+        "wss://websocket-bridge.freegen.app/ws",
+        ssl=ws_ssl,
+        additional_headers={
+            "Origin": "https://freegen.app",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        }
+    ) as ws:
+        await ws.send(json.dumps({"type": "subscribe", "job_id": job_id, "auth": auth}))
+        async for msg in ws:
+            data = json.loads(msg)
+            if data.get("type") == "result":
+                image_data_url = data["image_data"]
+                prefix = "data:image/jpeg;base64,"
+                if image_data_url.startswith(prefix):
+                    return base64.b64decode(image_data_url[len(prefix):])
+                return image_data_url
+            elif data.get("type") == "error":
+                raise RuntimeError(data.get("message", "Unknown FreeGen error"))
+
+
+def generate_image_freegen(prompt, config):
+    """Generate image using FreeGen.app (signer → generator → WebSocket)."""
+    img_cfg = config.get("image_generation", {})
+    aspect_ratio = img_cfg.get("freegen_aspect_ratio", "4:3")
+
+    print(f"      Signing prompt with FreeGen...")
+    ts, sig = _freegen_sign_prompt(prompt)
+
+    print(f"      Requesting FreeGen generation...")
+    job_id = _freegen_request_generation(prompt, ts, sig, aspect_ratio)
+
+    print(f"      Waiting for FreeGen image (job: {job_id[:8]}...)...")
+    return asyncio.run(_freegen_listen_ws(job_id))
+
+
+def generate_image(prompt, config):
+    """Try image generation providers in order. First success wins."""
+    providers = config.get("image_generation", {}).get("providers", ["cloudflare"])
+
+    for provider in providers:
+        try:
+            print(f"      Trying image provider: {provider}...")
+            if provider == "cloudflare":
+                img_data = generate_image_cloudflare(prompt, config)
+            elif provider == "freegen":
+                if not HAS_WEBSOCKETS:
+                    print(f"      ⚠️ websockets not installed, skipping FreeGen")
+                    continue
+                img_data = generate_image_freegen(prompt, config)
+            else:
+                print(f"      ⚠️ Unknown image provider: {provider}")
+                continue
+
+            out_dir = config["image_generation"].get("output_dir", "images")
+            Path(out_dir).mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"linkedin_{timestamp}.jpg"
+            filepath = os.path.join(out_dir, filename)
+            with open(filepath, "wb") as f:
+                f.write(img_data)
+            print(f"      ✅ Image saved: {filepath}")
+            return filepath
+
+        except Exception as e:
+            print(f"      ❌ {provider}: {e}")
+            continue
+
+    raise RuntimeError("All image generation providers failed")
 
 
 def upload_image_to_hosting(filepath, config):

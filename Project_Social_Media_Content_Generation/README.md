@@ -15,7 +15,7 @@ cron / systemd timer (daily 9 AM)
         │
         ├──[1]── cmd -p → Command Code generates post + image prompt (JSON)
         │
-        ├──[2]── Google Imagen → gemini-2.5-flash-image (free tier)
+        ├──[2]── Cloudflare Workers API 
         │         generates cinematic image from prompt
         │
         └──[3]── Buffer GraphQL API → createPost mutation → LinkedIn
@@ -48,7 +48,7 @@ Fill in your credentials in `config.local.yaml`:
 | `publishing.buffer.access_token` | [buffer.com/developers/apps](https://buffer.com/developers/apps) → Create App → Access Token |
 | `publishing.buffer.profile_id` | Run `GET https://api.buffer.com/` GraphQL query for your LinkedIn channel ID |
 | `publishing.upload_post.api_key` | [upload-post.com](https://upload-post.com) dashboard → API key |
-| `image_generation.google_imagen.api_key` | [aistudio.google.com](https://aistudio.google.com) → API keys |
+| `image_generation.api_key` | Obtain from your Cloudflare Worker / admin panel |
 
 ### 2. Test
 
@@ -103,9 +103,9 @@ Project_Social_Media_Content_Generation/
 
 ### Image Generation
 
-| Provider | Model | Cost |
+| Provider | Mechanism | Cost |
 |----------|-------|------|
-| **Google Imagen** | `gemini-2.5-flash-image` | Free tier (rate limited) |
+| **Cloudflare Workers** | Custom API | Free |
 
 Switch providers or reorder them anytime by editing the `providers:` list in your config.
 
@@ -134,7 +134,7 @@ content:
 | Component | Cost |
 |-----------|------|
 | Command Code | Plan credits (free tier available) |
-| Google Imagen | Free tier |
+| Cloudflare Workers | Free tier |
 | Buffer API | Free |
 | Upload-Post.com | Free tier |
 | **Total** | **$0/month** |
