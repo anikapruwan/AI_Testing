@@ -987,6 +987,64 @@ streamlit run src/app.py
 
 > **Structured-output gotcha (Groq):** `with_structured_output(Triage)` defaults to function-calling, where the model can emit `"False"` (a string) for a boolean field and Groq's server-side validator rejects it (`400 tool_use_failed`). Fix: `method="json_schema"`, which constrains generation to the schema so booleans come back as real booleans — but it requires a json-schema-capable Groq model (e.g. `openai/gpt-oss-120b`; `llama-3.1-8b-instant` does **not** support it).
 
+### RCA agent — root-cause analysis from real signals
+
+A tool-calling agent that diagnoses a failing/at-risk automation suite by gathering **real** evidence before concluding.
+
+| File | What |
+|------|------|
+| `src/rca_agent.py` | Teaching version — three mock tools (logs / commits / service health) → root cause + evidence + fix. |
+| `src/rca_agent_prod_jenkins_github_apitestping.py` | **Production** — real tools: `fetch_test_logs` (Jenkins console output), `recent_commits` (GitHub commits API), `service_health` (live HTTP ping of the app). |
+| `src/UI/rca_ui.py` | **Streamlit UI** — enter Jenkins job / GitHub repo / app URL / question → run the agent → see the evidence trail + RCA. |
+
+```bash
+# .env: GROQ_API_KEY, LLM_MODEL, JENKINS_URL/JOB/BUILD/USER/TOKEN, GITHUB_REPO, HEALTH_URL
+python src/rca_agent_prod_jenkins_github_apitestping.py
+streamlit run src/UI/rca_ui.py
+```
+
+> **Gotcha fixed:** the LLM invented a fake health URL and reported a false "site down". Dropping the tool's `url` argument forces `service_health()` to always ping the configured app under test — the difference between a trustworthy and a misleading signal.
+
+### Test designer agent — JIRA story → RAG-grounded test plan
+
+Turns a requirement into a structured `TestPlan` (feature, scope, risks, and concrete cases with steps + expected results).
+
+| File | What |
+|------|------|
+| `src/test_designer_agent.py` | Teaching version — a pasted user story → `TestPlan` covering happy / negative / edge / security. |
+| `src/test_designer_agent_prod.py` | **Production** — `fetch_jira_story` pulls a story from **JIRA (project VWO)**, `qa_copilot_search` retrieves similar existing cases from the **QA Copilot RAG**, then the LLM designs the plan grounded in both (reusing conventions, avoiding duplicates). |
+
+```bash
+python src/test_designer_agent_prod.py VWO-105     # → 18 cases (TC-TTAC-001…018), grounded in the KB
+```
+
+Two explainer pages live in `docs/`: [`test_designer_architecture.html`](Chapter_21_LangChain/docs/test_designer_architecture.html) (Excalidraw-style pipeline diagram) and [`prompts.html`](Chapter_21_LangChain/docs/prompts.html) (build log + every agent's prompt).
+
+### QA Copilot — one front door over all three prod agents
+
+`src/QACopilot_Final/` unifies bug triage, RCA, and test design behind a single router + Streamlit UI, built on the **production** agents and hardened to keep working when local services aren't reachable.
+
+The chapter's agents are organized into two folders: `src/local_aiagent/` (teaching demos, mock tools) and `src/prod/` (real JIRA / Jenkins / GitHub / RAG tools).
+
+| File | What |
+|------|------|
+| `copilot_core.py` | Shared orchestrator — a small router LLM classifies a request as TRIAGE / RCA / DESIGN and dispatches to the matching `src/prod/` agent. |
+| `qa_copilot_ui.py` | **Streamlit UI** — sidebar config → env, task selector (Auto-route / Triage / RCA / Design), JIRA-key + free-text inputs, rendered results. |
+| `qa_copilot.py` | CLI entry over the same core. |
+| `INSTRUCTIONS.md` | Step-by-step **DigitalOcean deploy** guide (clone → venv → `.env` → run / systemd). |
+
+**Graceful fallback** — every mode degrades so the app runs even on a fresh server: **real source** (JIRA / Jenkins / RAG) → **pasted text** → **built-in dummy sample**. The prod RCA Jenkins tool self-falls-back to a sample log when localhost Jenkins is unreachable (i.e. in production).
+
+```bash
+cd Chapter_21_LangChain
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt                    # pinned versions
+# .env: GROQ_API_KEY + LLM_MODEL required; JIRA / Jenkins / GitHub / Ollama optional
+streamlit run src/QACopilot_Final/qa_copilot_ui.py --server.port 8610
+```
+
+See [`INSTRUCTIONS.md`](Chapter_21_LangChain/src/QACopilot_Final/INSTRUCTIONS.md) for the full droplet deployment.
+
 ---
 
 *Continue following this repository for future chapters exploring deeper AI integrations!*

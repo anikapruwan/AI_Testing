@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chapter 21 — LangChain QA Agents: Build Log &amp; Prompt Catalog</title>
+<style>
+  :root{
+    --bg:#f7f8fb; --panel:#ffffff; --line:#e4e8f0; --ink:#1f2430; --muted:#5b6472;
+    --accent:#2e7d32; --accent2:#1565c0; --amber:#b8860b; --violet:#6d28d9; --red:#c0392b;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+  header.hero{background:linear-gradient(135deg,#eef4ff,#eafaf0);border-bottom:1px solid var(--line);padding:44px 0 34px}
+  h1{margin:0 0 8px;font-size:1.9rem;letter-spacing:-.02em}
+  .sub{color:var(--muted);margin:0;max-width:70ch}
+  .chip{display:inline-block;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;
+        color:var(--accent);background:#e5f4e8;border:1px solid #cfe8d5;border-radius:999px;padding:4px 11px;margin-bottom:14px}
+  nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+  nav.toc a{font-size:.82rem;text-decoration:none;color:var(--accent2);background:#fff;border:1px solid var(--line);
+            border-radius:8px;padding:6px 11px}
+  nav.toc a:hover{border-color:var(--accent2)}
+  section{padding:34px 0;border-top:1px solid var(--line)}
+  h2{font-size:1.35rem;margin:0 0 4px;letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono);color:#9aa4b2;font-size:.9rem;margin-right:8px}
+  h3{font-size:1.02rem;margin:22px 0 6px}
+  p.lead{color:var(--muted);margin:0 0 16px;max-width:72ch}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
+  .card h3{margin-top:0}
+  .meta{font-size:.8rem;color:var(--muted);font-family:var(--mono);margin:2px 0 10px}
+  .tag{display:inline-block;font-family:var(--mono);font-size:.7rem;border:1px solid var(--line);border-radius:6px;
+       padding:2px 7px;margin:0 4px 4px 0;color:var(--muted)}
+  pre{margin:10px 0 0;background:#0f1626;border-radius:10px;padding:14px 16px;overflow:auto}
+  pre code{font-family:var(--mono);font-size:.82rem;line-height:1.6;color:#d7e0f2;white-space:pre-wrap}
+  .plabel{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet);margin:12px 0 2px}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;margin:10px 0}
+  th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:#8a94a4}
+  td code,p code,li code{font-family:var(--mono);font-size:.83rem;background:#eef1f6;border:1px solid var(--line);
+       border-radius:5px;padding:1px 5px;color:#243}
+  .timeline{list-style:none;padding:0;margin:0}
+  .timeline li{position:relative;padding:0 0 16px 26px;border-left:2px solid var(--line);margin-left:6px}
+  .timeline li::before{content:"";position:absolute;left:-7px;top:3px;width:12px;height:12px;border-radius:50%;
+       background:var(--accent);border:2px solid #fff}
+  .timeline b{display:block}
+  .note{border-left:3px solid var(--amber);background:#fdf6e3;padding:10px 14px;border-radius:0 8px 8px 0;font-size:.9rem;color:#6b5518}
+  footer{padding:30px 0 60px;color:#8a94a4;font-size:.82rem;text-align:center}
+  a.up{color:var(--accent2)}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="chip">Chapter 21 · LangChain · Build Log</span>
+    <h1>QA AI Agents with LangChain — session log &amp; prompt catalog</h1>
+    <p class="sub">Everything built in this chapter, level by level: from a one-line LLM call to JIRA-driven,
+      RAG-grounded agents that triage bugs, run root-cause analysis, and design test plans. This page captures
+      <strong>what was asked</strong>, <strong>what was built</strong>, and the <strong>exact prompts</strong> each agent uses.</p>
+    <nav class="toc">
+      <a href="#timeline">① Build timeline</a>
+      <a href="#levels">② Levels 0–3</a>
+      <a href="#triage">③ Bug triage</a>
+      <a href="#rca">④ RCA agent</a>
+      <a href="#designer">⑤ Test designer</a>
+      <a href="#prompts">⑥ Prompt catalog</a>
+      <a href="#run">⑦ Run</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ TIMELINE ============ -->
+<section id="timeline">
+  <h2><span class="n">§1</span>Build timeline</h2>
+  <p class="lead">The order in which the pieces came together, driven by the conversation.</p>
+  <ul class="timeline">
+    <li><b>Switch Groq → OpenRouter (Level 1)</b>Move the bare LLM call onto OpenRouter (<code>ChatOpenAI</code> + <code>base_url</code>), model from <code>.env</code> (DeepSeek).</li>
+    <li><b>Fix the v1 agent import</b><code>create_tool_calling_agent</code> + <code>AgentExecutor</code> are gone from <code>langchain.agents</code> in v1 → switch to <code>create_agent</code>, invoked with <code>{"messages":[…]}</code>.</li>
+    <li><b>Bug triage agent</b><code>fetch_jira_ticket</code> tool (JIRA REST v3 + ADF→text) → structured <code>Triage</code>. Fixed the Groq <em>string-boolean 400</em> with <code>method="json_schema"</code>.</li>
+    <li><b>RAG knowledge base</b><code>rag/</code> package — Chroma KB (Ollama <code>nomic-embed-text</code>), ingests test cases + bug reports + PDFs + live JIRA (JQL). Prod triage grounds each verdict in the top-3 similar items.</li>
+    <li><b>RCA agent (demo → production)</b>Root-cause agent with real tools: Jenkins console log, GitHub commits, live health ping. Fixed an LLM hallucinating the health URL by removing the tool argument.</li>
+    <li><b>RCA Streamlit UI</b><code>src/UI/rca_ui.py</code> — enter Jenkins / GitHub / app URL / question, run the agent, see the evidence trail + RCA.</li>
+    <li><b>Test designer (demo → production)</b>Requirement → structured <code>TestPlan</code>. Production version fetches a <strong>JIRA story (project VWO)</strong> and pulls context from the <strong>QA Copilot RAG</strong> before designing — ran on <code>VWO-105</code> → 18 grounded cases.</li>
+    <li><b>Architecture diagram</b><code>docs/test_designer_architecture.html</code> — Excalidraw-style pipeline of the test designer.</li>
+  </ul>
+</section>
+
+<!-- ============ LEVELS ============ -->
+<section id="levels">
+  <h2><span class="n">§2</span>Levels 0–3 (LangChain fundamentals)</h2>
+  <table>
+    <tr><th>Level</th><th>File (<code>src/</code>)</th><th>Concept</th></tr>
+    <tr><td>0</td><td><code>00_level_langchain_ai_agent.py</code></td><td>Bare LLM call via <code>ChatGroq</code></td></tr>
+    <tr><td>1</td><td><code>01_level_Openrouter_langchain_ai_agent.py</code></td><td>Same via <strong>OpenRouter</strong> (<code>ChatOpenAI</code> + <code>base_url</code>)</td></tr>
+    <tr><td>2</td><td><code>02_level_1_chain.py</code></td><td><strong>LCEL</strong> — <code>prompt | llm | StrOutputParser()</code></td></tr>
+    <tr><td>3</td><td><code>03_Flakyness_AI_Agent.py</code></td><td><strong>Tool-calling agent</strong> via <code>create_agent</code></td></tr>
+  </table>
+  <div class="note"><strong>LangChain v1:</strong> <code>create_agent</code> replaces <code>create_tool_calling_agent</code> + <code>AgentExecutor</code>; it runs the scratchpad / tool-loop internally and is invoked with <code>{"messages":[{"role":"user","content":…}]}</code>.</div>
+</section>
+
+<!-- ============ TRIAGE ============ -->
+<section id="triage">
+  <h2><span class="n">§3</span>Bug triage agent</h2>
+  <div class="card">
+    <h3>src/bug_traige_agent.py — JIRA → structured Triage</h3>
+    <div class="meta">tools: fetch_jira_ticket · output: Triage(title, severity, priority, component, suggested_team, likely_duplicate, reasoning)</div>
+    <span class="tag">JIRA REST v3</span><span class="tag">ADF→text</span><span class="tag">json_schema</span><span class="tag">multi-ticket</span>
+    <div class="plabel">System prompt</div>
+    <pre><code>You triage bugs for a web product. Map user impact to severity
+and business urgency to priority. Be decisive.</code></pre>
+    <div class="plabel">Human prompt</div>
+    <pre><code>Bug report:
+
+{report}</code></pre>
+  </div>
+  <div class="card">
+    <h3>src/bug_traige_agent_prod_ready.py — RAG-grounded triage</h3>
+    <div class="meta">adds top-3 retrieval from the QA Copilot RAG before triaging (reuses precedent, avoids dupes)</div>
+    <span class="tag">Chroma KB</span><span class="tag">Ollama nomic-embed</span><span class="tag">precedent-grounded</span>
+  </div>
+  <div class="note"><strong>Structured-output gotcha (Groq):</strong> default function-calling lets the model emit <code>"False"</code> (a string) for a boolean field → Groq rejects it (<code>400 tool_use_failed</code>). Fix: <code>with_structured_output(Triage, method="json_schema")</code> with a json-schema-capable model (e.g. <code>openai/gpt-oss-120b</code>; <code>llama-3.1-8b-instant</code> does not support it).</div>
+</section>
+
+<!-- ============ RCA ============ -->
+<section id="rca">
+  <h2><span class="n">§4</span>Root-cause analysis agent</h2>
+  <div class="card">
+    <h3>src/rca_agent_prod_jenkins_github_apitestping.py</h3>
+    <div class="meta">tools: fetch_test_logs (Jenkins console) · recent_commits (GitHub API) · service_health (live ping)</div>
+    <span class="tag">Jenkins</span><span class="tag">GitHub commits</span><span class="tag">health ping</span><span class="tag">create_agent</span>
+    <div class="plabel">System prompt</div>
+    <pre><code>You are a root-cause analysis agent for test automation. Gather evidence
+with the tools BEFORE concluding — check the Jenkins log, the recent commits,
+and whether the app under test is up. Then answer: is the automation healthy?
+Is there a login error? Give the single most likely root cause, the evidence
+for it, and one concrete fix. If a tool returns an ERROR, say so and reason
+from what you do have.</code></pre>
+    <div class="plabel">Example user input</div>
+    <pre><code>Can you check the RCA — is the automation working fine,
+and do we have any error in the login?</code></pre>
+  </div>
+  <div class="note"><strong>Fixed:</strong> the LLM invented a fake health URL (<code>ttacart.example.com</code>) → false "DOWN". Removing the <code>url</code> argument from <code>service_health()</code> forces it to always ping the configured app. Also has a Streamlit UI: <code>src/UI/rca_ui.py</code>.</div>
+</section>
+
+<!-- ============ DESIGNER ============ -->
+<section id="designer">
+  <h2><span class="n">§5</span>Test designer agent</h2>
+  <div class="card">
+    <h3>src/test_designer_agent_prod.py — JIRA story → RAG-grounded TestPlan</h3>
+    <div class="meta">tools: fetch_jira_story (project VWO) · qa_copilot_search (RAG) · output: TestPlan(feature, scope, risks, test_cases[])</div>
+    <span class="tag">JIRA VWO</span><span class="tag">QA Copilot RAG</span><span class="tag">structured TestPlan</span>
+    <div class="plabel">System prompt</div>
+    <pre><code>You are a test design expert. Turn a requirement into a crisp plan and
+concrete, runnable cases. Cover happy path, negative, edge and security.
+Reuse the conventions (ids, style, teams) shown in the PRIOR TEST CASES and
+avoid duplicating cases that already exist there. No fluff.</code></pre>
+    <div class="plabel">Human prompt</div>
+    <pre><code>Requirement / user story:
+
+{story}
+
+PRIOR TEST CASES from the QA Copilot knowledge base:
+
+{prior}</code></pre>
+    <div class="plabel">Result — VWO-105 (TTACart PRD)</div>
+    <pre><code>Feature: TTACart End-to-End Functional, Negative, Edge & Security Test Suite (18 cases)
+Cases: TC-TTAC-001 … TC-TTAC-018
+Covers: login, inventory/sort, cart, both checkout steps, hamburger menu,
+        responsive layout, performance_glitch_user, security of protected pages
+Risks:  regression of core flows · wrong cart/tax total · auth bypass via direct URL</code></pre>
+  </div>
+  <p class="lead">See the pipeline drawn out in <a class="up" href="./test_designer_architecture.html">test_designer_architecture.html</a>.</p>
+</section>
+
+<!-- ============ PROMPT CATALOG ============ -->
+<section id="prompts">
+  <h2><span class="n">§6</span>Prompt catalog (all agents)</h2>
+  <p class="lead">Every system prompt used across the chapter, in one place.</p>
+
+  <div class="plabel">02 · LCEL bug summariser</div>
+  <pre><code>System: You are a senior SDET. Be concrete and terse.
+Human : Summarise this bug in one line, then give a likely root-cause guess: {bug}</code></pre>
+
+  <div class="plabel">03 · Flakiness tool-calling agent</div>
+  <pre><code>You are a QA assistant. Use tools when you need data.</code></pre>
+
+  <div class="plabel">RCA (demo)</div>
+  <pre><code>You are a root-cause analysis agent. Gather evidence with tools BEFORE
+concluding. Then give: the single most likely root cause, the evidence
+for it, and one fix.</code></pre>
+
+  <div class="plabel">Bug triage</div>
+  <pre><code>You triage bugs for a web product. Map user impact to severity and
+business urgency to priority. Be decisive.</code></pre>
+
+  <div class="plabel">Test designer (demo)</div>
+  <pre><code>You are a test design expert. Turn a requirement into a crisp plan and
+concrete, runnable cases. Cover happy path, negative, edge and security.
+No fluff.</code></pre>
+</section>
+
+<!-- ============ RUN ============ -->
+<section id="run">
+  <h2><span class="n">§7</span>Run</h2>
+  <pre><code>cd Chapter_21_LangChain
+python3 -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install langchain langchain-openai langchain-groq langchain-community \
+            chromadb streamlit requests python-dotenv
+
+# .env: GROQ_API_KEY, LLM_MODEL, JIRA_URL, JIRA_EMAIL, JIRA_API_TOKEN,
+#       JENKINS_URL, JENKINS_USER, JENKINS_TOKEN, GITHUB_REPO, HEALTH_URL
+
+python -m rag.ingest                                  # build the QA Copilot KB (needs Ollama)
+python src/bug_traige_agent_prod_ready.py             # triage JIRA ticket(s)
+python src/rca_agent_prod_jenkins_github_apitestping.py   # root-cause analysis
+python src/test_designer_agent_prod.py VWO-105        # RAG-grounded test plan
+streamlit run src/UI/rca_ui.py                        # RCA web UI</code></pre>
+</section>
+
+</div>
+
+<footer>Chapter 21 · LangChain · QA AI Agents — build log &amp; prompt catalog</footer>
+</body>
+</html>

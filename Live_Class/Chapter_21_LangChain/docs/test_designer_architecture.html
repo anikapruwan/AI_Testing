@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Test Designer Agent — Architecture (Excalidraw style)</title>
+<style>
+  :root{ --ink:#1e1e1e; --canvas:#fbfbf8; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);
+       font-family:"Comic Sans MS","Segoe Print","Bradley Hand",ui-rounded,"Chalkboard SE",cursive;}
+  header{padding:22px 26px 6px}
+  h1{font-size:1.5rem;margin:0}
+  p.sub{margin:4px 0 0;color:#555;font-size:.95rem}
+  .stage{width:100%;overflow-x:auto}
+  svg{display:block;width:100%;height:auto;min-width:920px;max-width:1240px;margin:0 auto}
+  footer{padding:8px 26px 26px;color:#666;font-size:.82rem;text-align:center}
+  /* hand-drawn text style */
+  text{font-family:inherit}
+  .lbl{font-weight:700;fill:#1e1e1e}
+  .sm{font-size:13px;fill:#333}
+  .tag{font-size:11px;fill:#777}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🖊️ test_designer_agent_prod.py — how the test plan is generated</h1>
+  <p class="sub">JIRA story ➜ (two evidence tools) ➜ RAG-grounded LLM ➜ structured TestPlan. Excalidraw-style diagram.</p>
+</header>
+
+<div class="stage">
+<svg viewBox="0 0 1200 720" role="img" aria-label="Test designer agent architecture">
+  <defs>
+    <!-- sketchy hand-drawn wobble -->
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.016" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e1e1e"/>
+    </marker>
+    <marker id="arrowDash" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4263eb"/>
+    </marker>
+  </defs>
+
+  <!-- ============ NODES ============ -->
+
+  <!-- 1. JIRA key -->
+  <g filter="url(#rough)">
+    <rect x="30" y="70" width="180" height="86" rx="14" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2.4"/>
+  </g>
+  <text class="lbl" x="120" y="104" text-anchor="middle" font-size="16">① JIRA key</text>
+  <text class="sm" x="120" y="128" text-anchor="middle">e.g. VWO-105</text>
+  <text class="tag" x="120" y="146" text-anchor="middle">project VWO · a PRD/story</text>
+
+  <!-- 2. fetch_jira_story tool -->
+  <g filter="url(#rough)">
+    <rect x="300" y="46" width="230" height="130" rx="16" fill="#ffec99" stroke="#1e1e1e" stroke-width="2.4"/>
+  </g>
+  <text class="lbl" x="415" y="80" text-anchor="middle" font-size="16">② fetch_jira_story 🔧</text>
+  <text class="sm" x="415" y="104" text-anchor="middle">JIRA REST v3 · basic auth</text>
+  <text class="sm" x="415" y="124" text-anchor="middle">ADF → plain text</text>
+  <text class="tag" x="415" y="150" text-anchor="middle">→ summary + description</text>
+  <text class="tag" x="415" y="167" text-anchor="middle">(the requirement)</text>
+
+  <!-- 3. qa_copilot_search tool -->
+  <g filter="url(#rough)">
+    <rect x="300" y="300" width="230" height="140" rx="16" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2.4"/>
+  </g>
+  <text class="lbl" x="415" y="334" text-anchor="middle" font-size="16">③ qa_copilot_search 🔧</text>
+  <text class="sm" x="415" y="358" text-anchor="middle">the QA Copilot RAG</text>
+  <text class="sm" x="415" y="378" text-anchor="middle">retrieve top-k similar</text>
+  <text class="tag" x="415" y="404" text-anchor="middle">→ prior/existing test cases</text>
+  <text class="tag" x="415" y="421" text-anchor="middle">(reuse conventions, avoid dupes)</text>
+
+  <!-- 3b. Chroma KB cylinder -->
+  <g filter="url(#rough)">
+    <path d="M300,560 a90,16 0 0 0 180,0 v-70 a90,16 0 0 0 -180,0 z" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2.2"/>
+    <ellipse cx="390" cy="490" rx="90" ry="16" fill="#dee2e6" stroke="#1e1e1e" stroke-width="2.2"/>
+  </g>
+  <text class="lbl" x="390" y="512" text-anchor="middle" font-size="15">Chroma KB</text>
+  <text class="sm" x="390" y="532" text-anchor="middle">vwo_knowledge · 218 items</text>
+  <text class="tag" x="390" y="552" text-anchor="middle">embed: Ollama nomic-embed-text</text>
+
+  <!-- 4. Prompt assembly -->
+  <g filter="url(#rough)">
+    <rect x="620" y="180" width="220" height="120" rx="16" fill="#ffffff" stroke="#1e1e1e" stroke-width="2.4"/>
+  </g>
+  <text class="lbl" x="730" y="214" text-anchor="middle" font-size="16">④ Prompt</text>
+  <text class="sm" x="730" y="240" text-anchor="middle">story  +  prior knowledge</text>
+  <text class="tag" x="730" y="264" text-anchor="middle">system: "test design expert,</text>
+  <text class="tag" x="730" y="281" text-anchor="middle">cover happy/neg/edge/security"</text>
+
+  <!-- 5. LLM designer -->
+  <g filter="url(#rough)">
+    <rect x="620" y="360" width="220" height="120" rx="16" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2.4"/>
+  </g>
+  <text class="lbl" x="730" y="396" text-anchor="middle" font-size="16">⑤ ChatGroq 🧠</text>
+  <text class="sm" x="730" y="420" text-anchor="middle">llama-3.3-70b-versatile</text>
+  <text class="sm" x="730" y="440" text-anchor="middle">with_structured_output</text>
+  <text class="tag" x="730" y="464" text-anchor="middle">(TestPlan schema, temp 0)</text>
+
+  <!-- 6. TestPlan output -->
+  <g filter="url(#rough)">
+    <rect x="940" y="250" width="230" height="180" rx="16" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2.6"/>
+  </g>
+  <text class="lbl" x="1055" y="286" text-anchor="middle" font-size="17">⑥ TestPlan ✅</text>
+  <text class="sm" x="1055" y="312" text-anchor="middle">feature · scope · risks</text>
+  <text class="sm" x="1055" y="334" text-anchor="middle">test_cases[ ]</text>
+  <text class="tag" x="1055" y="360" text-anchor="middle">each: id · title · type</text>
+  <text class="tag" x="1055" y="377" text-anchor="middle">priority · preconditions</text>
+  <text class="tag" x="1055" y="394" text-anchor="middle">steps[ ] · expected</text>
+  <text class="tag" x="1055" y="416" text-anchor="middle">VWO-105 → 18 cases</text>
+
+  <!-- ============ ARROWS ============ -->
+  <g fill="none" stroke="#1e1e1e" stroke-width="2.4" filter="url(#rough)">
+    <!-- key -> fetch -->
+    <path d="M212,113 H296" marker-end="url(#arrow)"/>
+    <!-- fetch story -> prompt -->
+    <path d="M532,120 C580,140 590,180 618,205" marker-end="url(#arrow)"/>
+    <!-- fetch story -> qa search (story is the query) -->
+    <path d="M415,178 V298" marker-end="url(#arrow)"/>
+    <!-- qa search <-> KB -->
+    <path d="M390,442 V478" marker-end="url(#arrow)"/>
+    <!-- qa search -> prompt (prior knowledge) -->
+    <path d="M532,360 C585,320 590,300 618,278" marker-end="url(#arrow)"/>
+    <!-- prompt -> llm -->
+    <path d="M730,302 V358" marker-end="url(#arrow)"/>
+    <!-- llm -> testplan -->
+    <path d="M842,415 C900,400 910,360 938,345" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- edge labels -->
+  <text class="tag" x="250" y="104" text-anchor="middle">fetch</text>
+  <text class="tag" x="437" y="250" text-anchor="middle" transform="rotate(90 437 250)">story = query</text>
+  <text class="tag" x="590" y="150" text-anchor="middle">story</text>
+  <text class="tag" x="585" y="326" text-anchor="middle">prior cases</text>
+  <text class="tag" x="905" y="360" text-anchor="middle">structured</text>
+
+  <!-- caption strip -->
+  <text class="tag" x="600" y="700" text-anchor="middle" font-size="13">
+    Deterministic pipeline: fetch_jira_story → qa_copilot_search (RAG) → prompt(story + prior) → LLM → TestPlan. Tools are @tool-decorated and reusable.
+  </text>
+</svg>
+</div>
+
+<footer>Chapter 21 · LangChain · test_designer_agent_prod.py — RAG-grounded JIRA-to-test-plan designer</footer>
+</body>
+</html>

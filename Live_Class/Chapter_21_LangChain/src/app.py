@@ -13,7 +13,7 @@ from pathlib import Path
 import streamlit as st
 from dotenv import dotenv_values, load_dotenv
 
-import bug_traige_agent_prod_ready as agent  # RAG-grounded triage
+import Chapter_21_LangChain.src.prod.bug_traige_agent_prod_ready as agent  # RAG-grounded triage
 from rag import ingest as rag_ingest, get_collection
 
 ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
